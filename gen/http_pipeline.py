@@ -6,7 +6,7 @@ ITEM_PIPELINES = {
 }
 
 并配置：
-HTTP_COLLECTOR_URL = 'http://localhost:8000/items'
+HTTP_COLLECTOR_URL = 'http://localhost:8080/items'
 
 此 pipeline 使用 requests 库进行同步 HTTP 调用，简单可靠。可根据需要改为异步（aiohttp）以提高吞吐。
 """
@@ -25,7 +25,7 @@ class HttpPostPipeline:
 
     @classmethod
     def from_crawler(cls, crawler):
-        url = crawler.settings.get('HTTP_COLLECTOR_URL', 'http://localhost:8000/items')
+        url = crawler.settings.get('HTTP_COLLECTOR_URL', 'http://localhost:8080/items')
         return cls(url)
 
     def process_item(self, item, spider):

@@ -42,3 +42,9 @@ async def receive_item(request: Request):
         raise HTTPException(status_code=500, detail=f"写入文件失败: {e}")
 
     return {"status": "ok"}
+
+
+@app.post("/items/")
+async def receive_item_slash(request: Request):
+    """Alias route accepting trailing slash to avoid client path mismatches."""
+    return await receive_item(request)

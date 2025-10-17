@@ -349,5 +349,40 @@ class {self._currentParams['spiderName'].capitalize()}Spider(scrapy.Spider):
         content = re.sub(r"^#?CONCURRENT_REQUESTS = .*$", f'CONCURRENT_REQUESTS = {self._currentParams["concurrentRequests"]}', content, flags=re.M)
         content = re.sub(r"^#?DOWNLOAD_DELAY = .*$", f'DOWNLOAD_DELAY = {self._currentParams["downloadDelay"]}', content, flags=re.M)
 
+        # Attempt to inject HTTP collector pipeline configuration.
+        pipeline_snippet = (
+            "\n# === DD-grabber: HTTP collector pipeline (added automatically) ===\n"
+            "# 将 items 通过 HTTP POST 发送到 collector (gen/collector.py)。\n"
+            "# 在 Scrapy 项目中需要将 gen/http_pipeline.py 的类路径放到 ITEM_PIPELINES 中，\n"
+            "# 或者把 pipeline 代码复制到项目的 pipelines.py 后使用以下配置。\n"
+            "HTTP_COLLECTOR_URL = 'http://localhost:8080/items'\n"
+        )
+
+        # If ITEM_PIPELINES exists and is not commented out, try to insert our pipeline entry.
+        if re.search(r"^ITEM_PIPELINES\s*=\s*\{", content, flags=re.M):
+            # If pipeline key already present, skip insertion
+            if 'HttpPostPipeline' not in content and 'gen.http_pipeline.HttpPostPipeline' not in content:
+                # Insert before the closing '}' of the first ITEM_PIPELINES dict
+                content = re.sub(
+                    r"(ITEM_PIPELINES\s*=\s*\{)([\s\S]*?)(\})",
+                    lambda m: m.group(1)
+                    + m.group(2)
+                    + "\n    # From DD-grabber: post items to HTTP collector\n    'gen.http_pipeline.HttpPostPipeline': 300,\n"
+                    + m.group(3),
+                    content,
+                    count=1,
+                    flags=re.M,
+                )
+                content += pipeline_snippet
+        else:
+            # Append an example ITEM_PIPELINES configuration and the collector URL at the end
+            content += (
+                "\n# === DD-grabber: example pipeline to send items to HTTP collector ===\n"
+                "ITEM_PIPELINES = {\n"
+                "    'gen.http_pipeline.HttpPostPipeline': 300,\n"
+                "}\n"
+            )
+            content += pipeline_snippet
+
         with open(settings_path, "w", encoding="utf-8") as f:
             f.write(content)
